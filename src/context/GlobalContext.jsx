@@ -85,15 +85,17 @@ const resVerify = await fetch(`${API_URL}/auth/register-verify`, {
   };
 
   // Función para desvincular el dispositivo actual
-  const unlinkBiometric = async () => {
+const unlinkBiometric = async () => {
     try {
       const res = await fetch(`${API_URL}/auth/reset-biometric`, { method: 'DELETE' });
       if (res.ok) {
         setIsBiometricLinked(false);
-        alert("Huella borrada de la base de datos. Ya puedes volver a registrarla desde cero.");
+        alert("Huella borrada de la base de datos.");
+      } else {
+        alert("El servidor no pudo borrar la huella.");
       }
     } catch (error) {
-      console.error("Error al desvincular:", error);
+      alert(`Error de red al desvincular: ${error.message}`);
     }
   };
 
