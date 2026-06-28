@@ -191,12 +191,12 @@ const SalesModule = () => {
     }
   };
 
-  const handleCreateSale = (e) => {
+  const handleCreateSale = async (e) => {
     e.preventDefault();
     const prodId = saleData.productId || finishedProducts[0]?.id;
     if (!prodId) return alert("No tienes productos terminados en stock para vender.");
     
-    const result = registerNewSale(saleData.clientName, prodId, saleData.quantity);
+    const result = await registerNewSale(saleData.clientName, prodId, saleData.quantity);
     
     if (result.success) {
       alert("¡Venta registrada exitosamente!");
