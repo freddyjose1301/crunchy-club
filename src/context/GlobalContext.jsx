@@ -12,7 +12,7 @@ export const GlobalProvider = ({ children }) => {
   const [clients, setClients] = useState([]);
   const [isBiometricLinked, setIsBiometricLinked] = useState(false); // Estado del botón temporal
 
-  const API_URL = 'https://crunchy-backend-mtxo.onrender.com';
+  const API_URL = 'https://crunchy-backend-mtxo.onrender.com/api';
 
   const refreshDataFromDatabase = async () => {
     try {
