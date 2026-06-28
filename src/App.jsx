@@ -41,6 +41,8 @@ const LoginScreen = ({ onLogin }) => {
       const verification = await resVerify.json();
       
       if (resVerify.ok && verification.verified) {
+        // NUEVO: Auto-curación. Si la huella pasó, guardamos el post-it en este dispositivo.
+        localStorage.setItem('crunchy_biometric_device', 'true');
         onLogin();
       } else {
         alert(`Falla de validación: ${verification.error || 'Error desconocido'}`);
