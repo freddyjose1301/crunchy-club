@@ -26,9 +26,13 @@ export const GlobalProvider = ({ children }) => {
       if (resClientes.ok) setClients(await resClientes.json());
 
       const resCheck = await fetch(`${API_URL}/auth/check-biometric`);
-      if (resCheck.ok) {
-        const dataCheck = await resCheck.json();
-        setIsBiometricLinked(!!dataCheck.linked);
+        if (resCheck.ok) {
+          const dataCheck = await resCheck.json();
+          
+          // NUEVO: Solo muestra que está vinculado si la BD dice que sí, 
+          // Y si este dispositivo físico tiene el "Post-it" guardado.
+          const isThisDeviceLinked = localStorage.getItem('crunchy_biometric_device') === 'true';
+          setIsBiometricLinked(dataCheck.linked && isThisDeviceLinked);
       }
 
       // NUEVO: Traer el capital en vivo desde Supabase
@@ -81,6 +85,8 @@ export const GlobalProvider = ({ children }) => {
       const regResponse = await startRegistration(await resOptions.json());
       const resVerify = await fetch(`${API_URL}/auth/register-verify`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(regResponse) });
       if ((await resVerify.json()).verified) {
+        // NUEVO: Guarda el permiso físico en este dispositivo
+        localStorage.setItem('crunchy_biometric_device', 'true');
         setIsBiometricLinked(true);
         alert("¡Huella guardada exitosamente!");
       }
@@ -92,6 +98,8 @@ export const GlobalProvider = ({ children }) => {
   const unlinkBiometric = async () => {
     try {
       if ((await fetch(`${API_URL}/auth/reset-biometric`, { method: 'DELETE' })).ok) {
+        // NUEVO: Rompe el permiso físico
+        localStorage.removeItem('crunchy_biometric_device');
         setIsBiometricLinked(false);
         alert("Huella borrada de la base de datos.");
       }
