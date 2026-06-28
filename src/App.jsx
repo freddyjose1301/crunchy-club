@@ -4,6 +4,7 @@ import { GlobalProvider, useGlobalContext } from './context/GlobalContext';
 import { CurrencyDisplay } from './components/CurrencyDisplay';
 import { AlertBanner } from './components/AlertBanner';
 import { Fingerprint, Wallet, Package, TrendingUp, Users, LogOut } from 'lucide-react';
+import logoCrunchy from './assets/logo.png';
 
 const LoginScreen = ({ onLogin }) => {
   const [password, setPassword] = useState('');
@@ -25,8 +26,14 @@ const LoginScreen = ({ onLogin }) => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-cream px-4">
       <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border-t-4 border-brandBlue">
-        <h1 className="text-3xl font-bold text-center text-brandBlue mb-2">Crunchy Club</h1>
-        <p className="text-center text-gray-500 mb-8">ERP de Gestión</p>
+        {/* LOGO DE LA EMPRESA */}
+        <div className="flex flex-col items-center mb-6">
+          <img 
+            src={logoCrunchy} 
+            alt="Crunchy Club Logo" 
+            className="w-32 h-auto object-contain mb-2"
+          />
+        </div>
         
         <form onSubmit={handlePasswordLogin}>
           <input 
