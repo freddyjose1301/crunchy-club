@@ -91,7 +91,7 @@ const LoginScreen = ({ onLogin }) => {
 
 
 const Dashboard = () => {
-  const { capital, receivables, isBiometricLinked, registerBiometric } = useGlobalContext();
+  const { capital, receivables, isBiometricLinked, registerBiometric, unlinkBiometric } = useGlobalContext();
   
   return (
     <div className="space-y-6">
@@ -114,8 +114,26 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* SECCIÓN TEMPORAL: SE OCULTA SI LA HUELLA YA ESTÁ VINCULADA EN POSTGRES */}
-      {!isBiometricLinked && (
+{/* SECCIÓN BIOMÉTRICA DINÁMICA */}
+      {isBiometricLinked ? (
+        <div className="bg-white border border-green-100 p-4 rounded-xl flex justify-between items-center shadow-sm">
+           <div className="flex items-center gap-3">
+             <div className="p-2 bg-green-50 text-green-500 rounded-lg">
+               <Fingerprint size={24} />
+             </div>
+             <div>
+               <p className="text-sm font-bold text-gray-700">Seguridad Biométrica Activa</p>
+               <p className="text-xs text-gray-500">Este dispositivo está autorizado.</p>
+             </div>
+           </div>
+           <button 
+             onClick={unlinkBiometric} 
+             className="text-xs text-red-500 font-bold px-3 py-2 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
+           >
+             Desvincular
+           </button>
+        </div>
+      ) : (
         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 p-5 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4 animate-fadeIn">
           <div className="flex items-center gap-3 text-center sm:text-left flex-col sm:flex-row">
             <div className="p-3 bg-brandBlue text-white rounded-xl shadow-md">

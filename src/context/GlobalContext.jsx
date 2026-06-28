@@ -84,6 +84,19 @@ const resVerify = await fetch(`${API_URL}/auth/register-verify`, {
     }
   };
 
+  // Función para desvincular el dispositivo actual
+  const unlinkBiometric = async () => {
+    try {
+      const res = await fetch(`${API_URL}/auth/reset-biometric`, { method: 'DELETE' });
+      if (res.ok) {
+        setIsBiometricLinked(false);
+        alert("Huella borrada de la base de datos. Ya puedes volver a registrarla desde cero.");
+      }
+    } catch (error) {
+      console.error("Error al desvincular:", error);
+    }
+  };
+
   // Métodos puente para componentes
   const buyMaterials = async (category, title, quantity, costBs) => {
     const res = await fetch(`${API_URL}/insumos`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ category, name: title, quantity, total_cost_bs: costBs }) });
@@ -119,7 +132,7 @@ const resVerify = await fetch(`${API_URL}/auth/register-verify`, {
   return (
     <GlobalContext.Provider value={{
       exchangeRate, capital, clients, payDebt, checkLowStock,
-      inventoryItems, finishedProducts, buyMaterials, producePackages, registerNewSale, isBiometricLinked, registerBiometric,
+      inventoryItems, finishedProducts, buyMaterials, producePackages, registerNewSale, isBiometricLinked, registerBiometric, unlinkBiometric,
       receivables: clients.filter(c => c.status === 'Debe').reduce((acc, curr) => acc + parseFloat(curr.total_held_bs || curr.total_owed_bs || 0), 0),
     }}>
       {children}
