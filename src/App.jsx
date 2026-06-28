@@ -21,20 +21,17 @@ const LoginScreen = ({ onLogin }) => {
     }
   };
 
-  const handleBiometricLogin = async () => {
+const handleBiometricLogin = async () => {
     try {
-      // 1. Pedir desafío de login al backend
       const resOptions = await fetch(`${API_URL}/auth/login-options`);
       if (!resOptions.ok) {
         const errorData = await resOptions.json();
-        throw new Error(errorData.error || "Falla de conexión.");
+        throw new Error(errorData.error || "Falla al comunicarse con el servidor.");
       }
       const options = await resOptions.json();
 
-      // 2. Encender el lector físico para loguearse
       const authResponse = await startAuthentication(options);
 
-      // 3. Verificar con el backend
       const resVerify = await fetch(`${API_URL}/auth/login-verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -42,14 +39,17 @@ const LoginScreen = ({ onLogin }) => {
       });
 
       const verification = await resVerify.json();
-      if (verification.verified) {
-        onLogin(); // Te deja entrar directo al Dashboard
+      
+      // Validamos si la respuesta HTTP y la verificación fueron exitosas
+      if (resVerify.ok && verification.verified) {
+        onLogin();
       } else {
-        alert("Huella no reconocida.");
+        // AQUÍ ESTÁ LA CLAVE: Nos mostrará exactamente qué falló en el servidor
+        alert(`Falla de validación: ${verification.error || 'Error desconocido'}`);
       }
     } catch (error) {
       console.error(error);
-      alert(error.message);
+      alert(`Error del sistema: ${error.message}`);
     }
   };
 
