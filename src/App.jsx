@@ -57,13 +57,13 @@ const LoginScreen = ({ onLogin }) => {
         <div className="flex flex-col items-center mb-6">
           <img src={logoCrunchy} alt="Crunchy Club Logo" className="w-32 h-auto object-contain mb-2" />
           <p className="text-center text-gray-500 text-sm font-semibold tracking-wider uppercase">
-            Sistema de Gestión
+            Sistema de Gestión "Crunchy Club"
           </p>
         </div>
         
         <form onSubmit={handlePasswordLogin}>
           <input 
-            type="password" placeholder="Contraseña Maestra" value={password} onChange={(e) => setPassword(e.target.value)}
+            type="password" placeholder="Contraseña" value={password} onChange={(e) => setPassword(e.target.value)}
             className="w-full p-3 border border-gray-300 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-brandBlue text-center font-bold tracking-widest text-lg"
           />
           <button type="submit" className="w-full bg-brandBlue text-white font-bold py-3 rounded-lg hover:bg-brandBlueLight transition-colors mb-4 shadow-md">
