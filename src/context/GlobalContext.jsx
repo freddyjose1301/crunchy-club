@@ -62,7 +62,7 @@ const registerBiometric = async () => {
       const options = await resOptions.json();
       const regResponse = await startRegistration(options);
 
-      const resVerify = await fetch(`${API_URL}/auth/register-verify`, {
+const resVerify = await fetch(`${API_URL}/auth/register-verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(regResponse)
@@ -74,7 +74,8 @@ const registerBiometric = async () => {
         setIsBiometricLinked(true);
         alert("¡Huella dactilar vinculada y guardada en PostgreSQL de forma exitosa!");
       } else {
-        alert("La verificación biométrica falló.");
+        // AHORA TE MOSTRARÁ EL MOTIVO REAL EN LA PANTALLA DEL CELULAR
+        alert(`La verificación biométrica falló: ${verification.error}`);
       }
     } catch (error) {
       console.error(error);
