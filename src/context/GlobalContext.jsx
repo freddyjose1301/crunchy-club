@@ -6,7 +6,20 @@ export const useGlobalContext = () => useContext(GlobalContext);
 
 export const GlobalProvider = ({ children }) => {
   const [exchangeRate, setExchangeRate] = useState(40.50);
-  const [capital, setCapital] = useState(5000);
+  // REEMPLAZA: const [capital, setCapital] = useState(5000);
+  // POR ESTO:
+  const [capital, setCapital] = useState(() => {
+    const savedCapital = localStorage.getItem('crunchy_capital');
+    return savedCapital !== null ? parseFloat(savedCapital) : 0; // Inicia en 0 por defecto
+  });
+
+  // Guardar automáticamente cada vez que cambie
+  useEffect(() => {
+    localStorage.setItem('crunchy_capital', capital.toString());
+  }, [capital]);
+
+  // Función para poder inyectar capital manualmente
+  const updateCapital = (newAmount) => setCapital(parseFloat(newAmount));
   const [inventoryItems, setInventoryItems] = useState([]);
   const [finishedProducts, setFinishedProducts] = useState([]);
   const [clients, setClients] = useState([]);
@@ -134,7 +147,7 @@ const unlinkBiometric = async () => {
   return (
     <GlobalContext.Provider value={{
       exchangeRate, capital, clients, payDebt, checkLowStock,
-      inventoryItems, finishedProducts, buyMaterials, producePackages, registerNewSale, isBiometricLinked, registerBiometric, unlinkBiometric,
+      inventoryItems, finishedProducts, buyMaterials, producePackages, registerNewSale, isBiometricLinked, registerBiometric, unlinkBiometric, updateCapital,
       receivables: clients.filter(c => c.status === 'Debe').reduce((acc, curr) => acc + parseFloat(curr.total_held_bs || curr.total_owed_bs || 0), 0),
     }}>
       {children}

@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { GlobalProvider, useGlobalContext } from './context/GlobalContext';
 import { CurrencyDisplay } from './components/CurrencyDisplay';
 import { AlertBanner } from './components/AlertBanner';
-import { Fingerprint, Wallet, Package, TrendingUp, Users, LogOut } from 'lucide-react';
+import { Fingerprint, Wallet, Package, TrendingUp, Users, LogOut, UserPlus, ShoppingBag, Check, Plus, X, PackagePlus, Factory, Box, Tag, Layers, Calculator, CheckCircle2, AlertTriangle, XCircle, DollarSign } from 'lucide-react';
 import logoCrunchy from './assets/logo.png';
 import { startAuthentication } from '@simplewebauthn/browser';
 
@@ -21,7 +21,7 @@ const LoginScreen = ({ onLogin }) => {
     }
   };
 
-const handleBiometricLogin = async () => {
+  const handleBiometricLogin = async () => {
     try {
       const resOptions = await fetch(`${API_URL}/auth/login-options`);
       if (!resOptions.ok) {
@@ -40,11 +40,9 @@ const handleBiometricLogin = async () => {
 
       const verification = await resVerify.json();
       
-      // Validamos si la respuesta HTTP y la verificación fueron exitosas
       if (resVerify.ok && verification.verified) {
         onLogin();
       } else {
-        // AQUÍ ESTÁ LA CLAVE: Nos mostrará exactamente qué falló en el servidor
         alert(`Falla de validación: ${verification.error || 'Error desconocido'}`);
       }
     } catch (error) {
@@ -91,18 +89,31 @@ const handleBiometricLogin = async () => {
 
 
 const Dashboard = () => {
-  const { capital, receivables, isBiometricLinked, registerBiometric, unlinkBiometric } = useGlobalContext();
+  const { capital, receivables, isBiometricLinked, registerBiometric, unlinkBiometric, updateCapital } = useGlobalContext();
   
   return (
     <div className="space-y-6">
       {/* Tarjetas de Métricas Principales */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
-          <div className="p-4 bg-green-100 rounded-full text-green-600"><Wallet size={28} /></div>
-          <div>
-            <p className="text-sm text-gray-500 font-semibold uppercase">Capital Disponible</p>
-            <CurrencyDisplay amountBs={capital} size="large" />
+        
+        {/* TARJETA DE CAPITAL CON BOTÓN DE EDICIÓN */}
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col gap-2">
+          <div className="flex items-center gap-4">
+            <div className="p-4 bg-green-100 rounded-full text-green-600"><Wallet size={28} /></div>
+            <div>
+              <p className="text-sm text-gray-500 font-semibold uppercase">Capital Disponible</p>
+              <CurrencyDisplay amountBs={capital} size="large" />
+            </div>
           </div>
+          <button 
+            onClick={() => {
+              const nuevo = prompt("Ingresa tu capital actual real (en Bs):", capital);
+              if(nuevo !== null && !isNaN(nuevo) && nuevo !== "") updateCapital(nuevo);
+            }}
+            className="text-xs text-gray-400 hover:text-brandBlue text-left mt-2 flex items-center gap-1 transition-colors"
+          >
+            ✎ Ajustar saldo manual
+          </button>
         </div>
         
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
@@ -114,7 +125,7 @@ const Dashboard = () => {
         </div>
       </div>
 
-{/* SECCIÓN BIOMÉTRICA DINÁMICA */}
+      {/* SECCIÓN BIOMÉTRICA DINÁMICA */}
       {isBiometricLinked ? (
         <div className="bg-white border border-green-100 p-4 rounded-xl flex justify-between items-center shadow-sm">
            <div className="flex items-center gap-3">
@@ -156,23 +167,19 @@ const Dashboard = () => {
   );
 };
 
-import { UserPlus, ShoppingBag, Check, Plus, X } from 'lucide-react'; // Asegúrate de importar estos iconos arriba
-
 const SalesModule = () => {
   const { clients, finishedProducts, payDebt, registerNewSale, exchangeRate } = useGlobalContext();
   const [activeTab, setActiveTab] = useState('Debe');
   
-  // Estados para el Modal de Pago
   const [selectedClient, setSelectedClient] = useState(null);
   const [exactPayment, setExactPayment] = useState('');
 
-  // Estados para el Formulario de Nueva Venta
   const [showSaleForm, setShowSaleForm] = useState(false);
   const [saleData, setSaleData] = useState({ clientName: '', productId: '', quantity: '' });
 
-  // Cálculos en tiempo real para la confirmación de la venta
-  const selectedProduct = finishedProducts.find(p => p.id === saleData.productId);
-  const calculatedTotalEur = selectedProduct ? selectedProduct.priceEur * (parseInt(saleData.quantity) || 0) : 0;
+  // CORRECCIÓN: Leer price_eur (con guion bajo)
+  const selectedProduct = finishedProducts.find(p => p.id === parseInt(saleData.productId));
+  const calculatedTotalEur = selectedProduct ? parseFloat(selectedProduct.price_eur) * (parseInt(saleData.quantity) || 0) : 0;
   const calculatedTotalBs = calculatedTotalEur * exchangeRate;
 
   const handleProcessPayment = (e) => {
@@ -204,7 +211,6 @@ const SalesModule = () => {
 
   return (
     <div className="space-y-4 mb-20">
-      {/* CABECERA CON ACCIÓN PRINCIPAL */}
       <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100">
         <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
           <ShoppingBag className="text-brandBlue" size={24} /> Gestión de Ventas
@@ -222,7 +228,6 @@ const SalesModule = () => {
         </button>
       </div>
 
-      {/* LISTADO DE CLIENTES CON PESTAÑAS */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="flex border-b">
           <button 
@@ -250,7 +255,6 @@ const SalesModule = () => {
                   <p className="text-xs text-gray-500 font-medium">{client.packages} Paquetes entregados</p>
                 </div>
                 <div className="text-right flex flex-col items-end gap-1">
-                  {/* Ajustado para leer el formato de base de datos */}
                   <CurrencyDisplay amountBs={parseFloat(client.total_owed_bs)} />
                   {activeTab === 'Debe' && (
                     <button 
@@ -267,7 +271,6 @@ const SalesModule = () => {
         </div>
       </div>
 
-      {/* MODAL / FORMULARIO: REGISTRAR NUEVA VENTA */}
       {showSaleForm && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 backdrop-blur-sm animate-fadeIn">
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden border-t-4 border-brandBlue">
@@ -308,16 +311,13 @@ const SalesModule = () => {
                 </div>
               </div>
 
-              {/* CUADRO DE CONFIRMACIÓN FINANCIERA */}
               <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 space-y-2 mt-2">
                 <div className="flex justify-between items-center border-b border-blue-200/60 pb-2">
                   <span className="text-xs font-bold text-blue-700 uppercase tracking-wider">Total en Euros</span>
                   <span className="text-xl font-black text-brandBlue">€ {calculatedTotalEur.toFixed(2)}</span>
                 </div>
-                
-                {/* Respetando la regla de oro financiera principal */}
                 <div className="flex justify-between items-center pt-1">
-                  <span className="text-xs font-bold text-gray-500 uppercase">Monto Total Base (Cuentas por cobrar)</span>
+                  <span className="text-xs font-bold text-gray-500 uppercase">Total a Cobrar (Bs)</span>
                   <div className="text-right">
                     <span className="font-black text-base text-gray-900 block">{calculatedTotalBs.toLocaleString('es-VE')} Bs</span>
                     <span className="text-[10px] text-gray-400 font-medium block">Indexado a la tasa actual</span>
@@ -338,7 +338,6 @@ const SalesModule = () => {
         </div>
       )}
 
-      {/* MODAL DE PROCESAR DEUDA (Mantiene tu lógica previa intacta) */}
       {selectedClient && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
           <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
@@ -365,15 +364,12 @@ const SalesModule = () => {
   );
 };
 
-import { PackagePlus, Factory, Box, Tag, Layers } from 'lucide-react'; // Asegúrate de tener estos iconos
-
 const InventoryModule = () => {
   const { inventoryItems, finishedProducts, buyMaterials, exchangeRate } = useGlobalContext();
   const [formData, setFormData] = useState({ category: 'bags', title: '', quantity: '', costBs: '' });
 
   const handlePurchase = (e) => {
     e.preventDefault();
-    // Validar título solo si es bolsa
     if(formData.category === 'bags' && !formData.title) return alert("Ingresa el nombre de la bolsa.");
     if(formData.quantity && formData.costBs) {
       buyMaterials(formData.category, formData.title, formData.quantity, formData.costBs);
@@ -384,15 +380,13 @@ const InventoryModule = () => {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-20">
-      {/* PANEL DE STOCK ACTUAL */}
       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col gap-6">
-        
-        {/* Insumos */}
         <div>
           <h2 className="text-xl font-bold text-brandBlue mb-4 flex items-center gap-2"><Box size={24} /> Insumos en Stock</h2>
           <div className="space-y-3">
             {inventoryItems.map(item => {
-              const unitCost = (item.totalCostBs / item.quantity) || 0;
+              // CORRECCIÓN: Leer total_cost_bs
+              const unitCost = (parseFloat(item.total_cost_bs) / item.quantity) || 0;
               return (
                 <div key={item.id} className="flex justify-between items-center border-b pb-2 last:border-0">
                   <div>
@@ -409,7 +403,6 @@ const InventoryModule = () => {
           </div>
         </div>
 
-        {/* Productos Terminados Desglosados */}
         <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
           <h3 className="font-bold text-brandBlue mb-3 flex items-center gap-2"><Tag size={18} /> Productos Terminados</h3>
           <div className="space-y-2">
@@ -421,7 +414,8 @@ const InventoryModule = () => {
                   <span className="font-bold text-gray-700">{fp.name}</span>
                   <div className="text-right">
                     <span className="font-black text-brandBlue">{fp.quantity} Pqts</span>
-                    <span className="text-[10px] text-gray-400 block">Venta: €{fp.price_eur} ({(fp.price_eur * exchangeRate).toFixed(2)} Bs)</span>
+                    {/* CORRECCIÓN: Leer price_eur */}
+                    <span className="text-[10px] text-gray-400 block">Venta: €{fp.price_eur} ({(parseFloat(fp.price_eur) * exchangeRate).toFixed(2)} Bs)</span>
                   </div>
                 </div>
               ))
@@ -430,7 +424,6 @@ const InventoryModule = () => {
         </div>
       </div>
 
-      {/* FORMULARIO DE COMPRA DE INSUMOS */}
       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit">
         <h2 className="text-xl font-bold text-brandBlue mb-4 flex items-center gap-2"><PackagePlus size={24} /> Comprar Empaques</h2>
         <form onSubmit={handlePurchase} className="space-y-4">
@@ -446,7 +439,6 @@ const InventoryModule = () => {
             </select>
           </div>
           
-          {/* Este input se oculta mágicamente si seleccionas Stickers */}
           {formData.category === 'bags' && (
             <div className="animate-fadeIn">
               <label className="block text-sm text-gray-600 mb-1">Nombre de la Bolsa</label>
@@ -507,7 +499,6 @@ const ProductionModule = () => {
     );
     alert(`¡Se han registrado ${prodData.bagsAchieved} paquetes de ${prodData.productType} con éxito!`);
     
-    // Limpiar formulario excepto la bolsa seleccionada
     setProdData({ ...prodData, productType: '', stickersQty: '', peanutKg: '', peanutCostBs: '', bagsAchieved: '', gramsPerBag: '', salePriceEur: '' });
   };
 
@@ -522,8 +513,6 @@ const ProductionModule = () => {
       </div>
 
       <form onSubmit={handleProduction} className="space-y-6">
-        
-        {/* BLOQUE 1: IDENTIFICACIÓN Y EMPAQUE */}
         <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
           <h3 className="font-bold text-gray-700 mb-3 flex items-center gap-2"><Layers size={18}/> 1. Producto y Empaque</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -546,7 +535,6 @@ const ProductionModule = () => {
           </div>
         </div>
 
-        {/* BLOQUE 2: MATERIA PRIMA (MANÍ) */}
         <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
           <h3 className="font-bold text-gray-700 mb-3 flex items-center gap-2"><Box size={18}/> 2. Materia Prima Procesada</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -564,7 +552,6 @@ const ProductionModule = () => {
           </div>
         </div>
 
-        {/* BLOQUE 3: RENDIMIENTO Y VENTA */}
         <div className="bg-blue-50 p-4 rounded-xl border border-blue-200">
           <h3 className="font-bold text-brandBlue mb-3 flex items-center gap-2"><Tag size={18}/> 3. Rendimiento Final</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -597,8 +584,6 @@ const ProductionModule = () => {
   );
 };
 
-import { Calculator, CheckCircle2, AlertTriangle, XCircle, DollarSign } from 'lucide-react';
-
 export const InvestmentSimulator = () => {
   const { capital, exchangeRate, inventoryItems } = useGlobalContext();
   
@@ -607,31 +592,32 @@ export const InvestmentSimulator = () => {
   const [gramsPerBag, setGramsPerBag] = useState('');
   const [salePriceEur, setSalePriceEur] = useState('');
 
-  // Listas de empaque extraídas del stock real
   const bagsInStock = inventoryItems.filter(i => i.category === 'bags');
   const stickersInStock = inventoryItems.filter(i => i.category === 'stickers');
 
   const [selectedBagId, setSelectedBagId] = useState(bagsInStock[0]?.id || '');
   const [selectedStickerId, setSelectedStickerId] = useState(stickersInStock[0]?.id || '');
 
-  // Conversiones
   const pCost = parseFloat(peanutCost) || 0;
   const pGrams = parseFloat(peanutGrams) || 0;
   const gPerBag = parseFloat(gramsPerBag) || 0;
   const sPriceEur = parseFloat(salePriceEur) || 0;
   
-  // EXTRAER COSTOS REALES DEL INVENTARIO
-  const selectedBag = bagsInStock.find(i => i.id === selectedBagId);
-  const unitBagCost = selectedBag ? (selectedBag.totalCostBs / selectedBag.quantity) : 0;
+  // CORRECCIÓN: Nombres exactos de PostgreSQL y corrección de la suma (unitPackagingCost)
+  const selectedBag = bagsInStock.find(i => i.id === parseInt(selectedBagId));
+  const bagUnitCost = selectedBag && selectedBag.quantity > 0 
+    ? parseFloat(selectedBag.total_cost_bs) / selectedBag.quantity 
+    : 0;
 
-  const selectedSticker = stickersInStock.find(i => i.id === selectedStickerId);
-  const unitStickerCost = selectedSticker ? (selectedSticker.totalCostBs / selectedSticker.quantity) : 0;
+  const selectedSticker = stickersInStock.find(i => i.id === parseInt(selectedStickerId));
+  const stickerUnitCost = selectedSticker && selectedSticker.quantity > 0 
+    ? parseFloat(selectedSticker.total_cost_bs) / selectedSticker.quantity 
+    : 0;
 
-  const unitPackagingCost = unitBagCost + unitStickerCost;
+  const unitPackagingCost = bagUnitCost + stickerUnitCost;
   
-  // --- LÓGICA DE PROYECCIÓN ---
   const estimatedBags = gPerBag > 0 ? Math.floor(pGrams / gPerBag) : 0;
-  const totalPackagingCost = estimatedBags * unitPackagingCost; // Usa el costo real del stock
+  const totalPackagingCost = estimatedBags * unitPackagingCost; 
   const totalInvestmentBs = pCost + totalPackagingCost;
   const salePriceBs = sPriceEur * exchangeRate;
   
@@ -700,13 +686,15 @@ export const InvestmentSimulator = () => {
             <div>
               <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Bolsa del Stock</label>
               <select className="w-full p-2.5 border rounded-lg bg-white text-sm" value={selectedBagId} onChange={(e) => setSelectedBagId(e.target.value)}>
-                {bagsInStock.map(b => <option key={b.id} value={b.id}>{b.name} (Costo: {(b.totalCostBs/b.quantity).toFixed(2)} Bs)</option>)}
+                {/* CORRECCIÓN: Leer total_cost_bs */}
+                {bagsInStock.map(b => <option key={b.id} value={b.id}>{b.name} (Costo: {(parseFloat(b.total_cost_bs)/b.quantity).toFixed(2)} Bs)</option>)}
               </select>
             </div>
             <div>
               <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Sticker del Stock</label>
               <select className="w-full p-2.5 border rounded-lg bg-white text-sm" value={selectedStickerId} onChange={(e) => setSelectedStickerId(e.target.value)}>
-                {stickersInStock.map(s => <option key={s.id} value={s.id}>{s.name} (Costo: {(s.totalCostBs/s.quantity).toFixed(2)} Bs)</option>)}
+                {/* CORRECCIÓN: Leer total_cost_bs */}
+                {stickersInStock.map(s => <option key={s.id} value={s.id}>{s.name} (Costo: {(parseFloat(s.total_cost_bs)/s.quantity).toFixed(2)} Bs)</option>)}
               </select>
             </div>
           </div>
@@ -726,7 +714,6 @@ export const InvestmentSimulator = () => {
           </div>
         </div>
 
-        {/* ... [El bloque de la derecha (Panel de Resultados) se mantiene exactamente igual] ... */}
         <div className="bg-gray-50 p-4 md:p-6 rounded-xl border border-gray-200 flex flex-col justify-between">
           <div>
             <div className={`p-4 rounded-xl border flex gap-3 mb-6 ${feasibility.color}`}>
@@ -779,15 +766,13 @@ export const InvestmentSimulator = () => {
 
 const MainApp = ({ onLogout }) => {
   const [currentView, setCurrentView] = useState('dashboard');
-  const { exchangeRate } = useGlobalContext(); // Escuchamos la tasa real
+  const { exchangeRate } = useGlobalContext(); 
 
   return (
     <div className="min-h-screen bg-cream pb-20 md:pb-0 md:flex">
-      {/* Sidebar Desktop */}
       <aside className="hidden md:flex flex-col w-64 bg-brandBlue text-white min-h-screen p-6">
         <div className="mb-2">
           <h2 className="text-2xl font-bold">Crunchy Club</h2>
-          {/* TASA VISIBLE EN DESKTOP */}
           <span className="text-xs bg-brandBlueLight text-blue-100 px-2 py-1 rounded-md block mt-1 font-medium">
             Tasa: 1 € = {exchangeRate.toFixed(2)} Bs
           </span>
@@ -807,11 +792,9 @@ const MainApp = ({ onLogout }) => {
       </aside>
 
       <main className="flex-1 p-4 md:p-8">
-        {/* Header Mobile */}
         <header className="flex justify-between items-center mb-6 md:hidden bg-white p-3 rounded-xl shadow-sm border">
           <div>
             <h1 className="text-xl font-bold text-brandBlue">Crunchy Club</h1>
-            {/* TASA VISIBLE EN MÓVIL */}
             <span className="text-[11px] font-bold text-gray-500 block">
               1 € = {exchangeRate.toFixed(2)} Bs
             </span>
@@ -830,7 +813,6 @@ const MainApp = ({ onLogout }) => {
         {currentView === 'simulator' && <InvestmentSimulator />}
       </main>
 
-      {/* Bottom Nav Mobile */}
       <nav className="fixed bottom-0 w-full bg-white border-t flex justify-around p-3 md:hidden z-40">
         <button onClick={() => setCurrentView('dashboard')} className={`flex flex-col items-center ${currentView === 'dashboard' ? 'text-brandBlue' : 'text-gray-400'}`}>
           <TrendingUp size={22} /> <span className="text-[10px] font-bold mt-1">Panel</span>
