@@ -21,19 +21,21 @@ const LoginScreen = ({ onLogin }) => {
   };
 
   // ESTA ES LA NUEVA FUNCIÓN CONECTADA AL SENSOR
-  const handleBiometricLogin = async () => {
+const handleBiometricLogin = async () => {
     try {
       const API_URL = 'https://crunchy-backend-mtxo.onrender.com/api';
       
-      // 1. Pedir permiso y desafío al servidor
       const resOptions = await fetch(`${API_URL}/auth/login-options`);
-      if (!resOptions.ok) throw new Error("Aún no tienes una huella vinculada.");
+      
+      // AHORA LEE EL ERROR REAL EN LUGAR DE LANZAR UN TEXTO QUEMADO
+      if (!resOptions.ok) {
+        const errorData = await resOptions.json();
+        throw new Error(errorData.error || "Falla al comunicarse con el servidor.");
+      }
+      
       const options = await resOptions.json();
-
-      // 2. Encender el sensor del teléfono
       const authResp = await startAuthentication(options);
 
-      // 3. Enviar la huella escaneada para que el servidor la valide
       const resVerify = await fetch(`${API_URL}/auth/login-verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -43,13 +45,14 @@ const LoginScreen = ({ onLogin }) => {
       const verification = await resVerify.json();
       
       if (verification.verified) {
-        onLogin(); // ¡Te deja entrar al sistema al instante!
+        onLogin();
       } else {
-        alert("Huella no reconocida por el servidor.");
+        alert(`Fallo: ${verification.error}`);
       }
     } catch (error) {
       console.error(error);
-      alert(error.message);
+      // ESTO NOS MOSTRARÁ LA VERDAD SI EL CÓDIGO FALLA
+      alert(`Alerta del sistema: ${error.message}`);
     }
   };
 
