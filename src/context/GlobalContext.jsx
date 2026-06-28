@@ -49,16 +49,19 @@ export const GlobalProvider = ({ children }) => {
   }, []);
 
   // Función para registrar la huella dactilar usando el hardware del dispositivo
-  const registerBiometric = async () => {
+const registerBiometric = async () => {
     try {
-      // 1. Traer opciones de desafío criptográfico desde el Backend
       const resOptions = await fetch(`${API_URL}/auth/register-options`);
-      const options = await resOptions.json();
+      
+      // Validamos si el backend escupió un error antes de abrir el lector
+      if (!resOptions.ok) {
+        const errorData = await resOptions.json();
+        throw new Error(errorData.error || "Falla al comunicarse con el backend");
+      }
 
-      // 2. Encender el sensor de huellas físico del dispositivo (Pixel 7, laptop, etc.)
+      const options = await resOptions.json();
       const regResponse = await startRegistration(options);
 
-      // 3. Mandar la firma del sensor de vuelta al Backend para validar y guardar en la BD
       const resVerify = await fetch(`${API_URL}/auth/register-verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -68,14 +71,15 @@ export const GlobalProvider = ({ children }) => {
       const verification = await resVerify.json();
       
       if (verification.verified) {
-        setIsBiometricLinked(true); // Oculta el botón de forma reactiva inmediatamente
+        setIsBiometricLinked(true);
         alert("¡Huella dactilar vinculada y guardada en PostgreSQL de forma exitosa!");
       } else {
         alert("La verificación biométrica falló.");
       }
     } catch (error) {
       console.error(error);
-      alert("Para usar biometría local, asegúrate de estar en localhost o un entorno seguro con HTTPS.");
+      // ALERTA DINÁMICA: Nos dirá exactamente qué se rompió en la pantalla de tu celular
+      alert(`Error del sistema: ${error.message}`); 
     }
   };
 
