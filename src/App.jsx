@@ -70,26 +70,51 @@ const LoginScreen = ({ onLogin }) => {
   );
 };
 
+
 const Dashboard = () => {
-  const { capital, receivables } = useGlobalContext();
+  const { capital, receivables, isBiometricLinked, registerBiometric } = useGlobalContext();
   
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
-        <div className="p-4 bg-green-100 rounded-full text-green-600"><Wallet size={28} /></div>
-        <div>
-          <p className="text-sm text-gray-500 font-semibold uppercase">Capital Disponible</p>
-          <CurrencyDisplay amountBs={capital} size="large" />
+    <div className="space-y-6">
+      {/* Tarjetas de Métricas Principales */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
+          <div className="p-4 bg-green-100 rounded-full text-green-600"><Wallet size={28} /></div>
+          <div>
+            <p className="text-sm text-gray-500 font-semibold uppercase">Capital Disponible</p>
+            <CurrencyDisplay amountBs={capital} size="large" />
+          </div>
+        </div>
+        
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
+          <div className="p-4 bg-orange-100 rounded-full text-orange-600"><TrendingUp size={28} /></div>
+          <div>
+            <p className="text-sm text-gray-500 font-semibold uppercase">Cuentas por Cobrar</p>
+            <CurrencyDisplay amountBs={receivables} size="large" />
+          </div>
         </div>
       </div>
-      
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
-        <div className="p-4 bg-orange-100 rounded-full text-orange-600"><TrendingUp size={28} /></div>
-        <div>
-          <p className="text-sm text-gray-500 font-semibold uppercase">Cuentas por Cobrar</p>
-          <CurrencyDisplay amountBs={receivables} size="large" />
+
+      {/* SECCIÓN TEMPORAL: SE OCULTA SI LA HUELLA YA ESTÁ VINCULADA EN POSTGRES */}
+      {!isBiometricLinked && (
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 p-5 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4 animate-fadeIn">
+          <div className="flex items-center gap-3 text-center sm:text-left flex-col sm:flex-row">
+            <div className="p-3 bg-brandBlue text-white rounded-xl shadow-md">
+              <Fingerprint size={24} />
+            </div>
+            <div>
+              <h3 className="font-bold text-gray-800 text-sm">Seguridad Biométrica Desactivada</h3>
+              <p className="text-xs text-gray-500 mt-0.5">Vincule el lector de este dispositivo para omitir la contraseña maestra en el inicio de sesión.</p>
+            </div>
+          </div>
+          <button
+            onClick={registerBiometric}
+            className="w-full sm:w-auto bg-brandBlue text-white font-bold text-xs px-4 py-2.5 rounded-lg hover:bg-brandBlueLight transition-colors shadow-sm whitespace-nowrap"
+          >
+            Vincular mi Huella
+          </button>
         </div>
-      </div>
+      )}
     </div>
   );
 };
@@ -188,7 +213,8 @@ const SalesModule = () => {
                   <p className="text-xs text-gray-500 font-medium">{client.packages} Paquetes entregados</p>
                 </div>
                 <div className="text-right flex flex-col items-end gap-1">
-                  <CurrencyDisplay amountBs={client.totalOwedBs} />
+                  {/* Ajustado para leer el formato de base de datos */}
+                  <CurrencyDisplay amountBs={parseFloat(client.total_owed_bs)} />
                   {activeTab === 'Debe' && (
                     <button 
                       onClick={() => setSelectedClient(client)}
@@ -358,7 +384,7 @@ const InventoryModule = () => {
                   <span className="font-bold text-gray-700">{fp.name}</span>
                   <div className="text-right">
                     <span className="font-black text-brandBlue">{fp.quantity} Pqts</span>
-                    <span className="text-[10px] text-gray-400 block">Venta: €{fp.priceEur} ({(fp.priceEur * exchangeRate).toFixed(2)} Bs)</span>
+                    <span className="text-[10px] text-gray-400 block">Venta: €{fp.price_eur} ({(fp.price_eur * exchangeRate).toFixed(2)} Bs)</span>
                   </div>
                 </div>
               ))
@@ -716,14 +742,21 @@ export const InvestmentSimulator = () => {
 
 const MainApp = ({ onLogout }) => {
   const [currentView, setCurrentView] = useState('dashboard');
+  const { exchangeRate } = useGlobalContext(); // Escuchamos la tasa real
 
   return (
     <div className="min-h-screen bg-cream pb-20 md:pb-0 md:flex">
       {/* Sidebar Desktop */}
       <aside className="hidden md:flex flex-col w-64 bg-brandBlue text-white min-h-screen p-6">
-        <h2 className="text-2xl font-bold mb-8">Crunchy Club</h2>
-        <nav className="flex flex-col gap-4 flex-1">
-          {/* ... tus botones actuales ... */}
+        <div className="mb-2">
+          <h2 className="text-2xl font-bold">Crunchy Club</h2>
+          {/* TASA VISIBLE EN DESKTOP */}
+          <span className="text-xs bg-brandBlueLight text-blue-100 px-2 py-1 rounded-md block mt-1 font-medium">
+            Tasa: 1 € = {exchangeRate.toFixed(2)} Bs
+          </span>
+        </div>
+        
+        <nav className="flex flex-col gap-4 flex-1 mt-6">
           <button onClick={() => setCurrentView('dashboard')} className="text-left font-semibold flex items-center gap-2"><TrendingUp size={20}/> Dashboard</button>
           <button onClick={() => setCurrentView('sales')} className="text-left font-semibold flex items-center gap-2"><Users size={20}/> Ventas</button>
           <button onClick={() => setCurrentView('inventory')} className="text-left font-semibold flex items-center gap-2"><Box size={20}/> Inventario</button>
@@ -731,19 +764,21 @@ const MainApp = ({ onLogout }) => {
           <button onClick={() => setCurrentView('simulator')} className="text-left font-semibold flex items-center gap-2"><Calculator size={20}/> Simulador</button>
         </nav>
         
-        {/* Botón de Cerrar Sesión Desktop */}
-        <button 
-          onClick={onLogout} 
-          className="mt-auto flex items-center gap-2 text-red-300 hover:text-red-100 font-bold transition-colors pt-4 border-t border-brandBlueLight"
-        >
+        <button onClick={onLogout} className="mt-auto flex items-center gap-2 text-red-300 hover:text-red-100 font-bold transition-colors pt-4 border-t border-brandBlueLight">
           <LogOut size={20} /> Salir del Sistema
         </button>
       </aside>
 
       <main className="flex-1 p-4 md:p-8">
-        {/* Header Mobile con Botón de Salir */}
-        <header className="flex justify-between items-center mb-6 md:hidden">
-          <h1 className="text-2xl font-bold text-brandBlue">Crunchy Club</h1>
+        {/* Header Mobile */}
+        <header className="flex justify-between items-center mb-6 md:hidden bg-white p-3 rounded-xl shadow-sm border">
+          <div>
+            <h1 className="text-xl font-bold text-brandBlue">Crunchy Club</h1>
+            {/* TASA VISIBLE EN MÓVIL */}
+            <span className="text-[11px] font-bold text-gray-500 block">
+              1 € = {exchangeRate.toFixed(2)} Bs
+            </span>
+          </div>
           <button onClick={onLogout} className="p-2 text-red-500 bg-red-50 rounded-full">
             <LogOut size={20} />
           </button>
@@ -755,29 +790,25 @@ const MainApp = ({ onLogout }) => {
         {currentView === 'sales' && <SalesModule />}
         {currentView === 'inventory' && <InventoryModule />}
         {currentView === 'production' && <ProductionModule />}
-        {currentView === 'simulator' && <InvestmentSimulator />} {/* NUEVO */}
+        {currentView === 'simulator' && <InvestmentSimulator />}
       </main>
 
-      {/* Bottom Nav para Mobile */}
+      {/* Bottom Nav Mobile */}
       <nav className="fixed bottom-0 w-full bg-white border-t flex justify-around p-3 md:hidden z-40">
         <button onClick={() => setCurrentView('dashboard')} className={`flex flex-col items-center ${currentView === 'dashboard' ? 'text-brandBlue' : 'text-gray-400'}`}>
-          <TrendingUp size={24} /> <span className="text-[10px] font-bold mt-1">Panel</span>
+          <TrendingUp size={22} /> <span className="text-[10px] font-bold mt-1">Panel</span>
         </button>
         <button onClick={() => setCurrentView('sales')} className={`flex flex-col items-center ${currentView === 'sales' ? 'text-brandBlue' : 'text-gray-400'}`}>
-          <Users size={24} /> <span className="text-[10px] font-bold mt-1">Ventas</span>
+          <Users size={22} /> <span className="text-[10px] font-bold mt-1">Ventas</span>
         </button>
         <button onClick={() => setCurrentView('inventory')} className={`flex flex-col items-center ${currentView === 'inventory' ? 'text-brandBlue' : 'text-gray-400'}`}>
-          <Box size={24} /> <span className="text-[10px] font-bold mt-1">Stock</span>
+          <Box size={22} /> <span className="text-[10px] font-bold mt-1">Stock</span>
         </button>
         <button onClick={() => setCurrentView('production')} className={`flex flex-col items-center ${currentView === 'production' ? 'text-brandBlue' : 'text-gray-400'}`}>
-          <Factory size={24} /> <span className="text-[10px] font-bold mt-1">Armar</span>
+          <Factory size={22} /> <span className="text-[10px] font-bold mt-1">Armar</span>
         </button>
-        <button 
-          onClick={() => setCurrentView('simulator')} 
-          className={`flex flex-col items-center ${currentView === 'simulator' ? 'text-brandBlue' : 'text-gray-400'}`}
-        >
-          <Calculator size={24} /> 
-          <span className="text-[10px] font-bold mt-1">Simular</span>
+        <button onClick={() => setCurrentView('simulator')} className={`flex flex-col items-center ${currentView === 'simulator' ? 'text-brandBlue' : 'text-gray-400'}`}>
+          <Calculator size={22} /> <span className="text-[10px] font-bold mt-1">Simular</span>
         </button>
       </nav>
     </div>

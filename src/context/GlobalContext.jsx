@@ -1,4 +1,5 @@
-import React, { createContext, useState, useContext } from 'react';
+import React, { createContext, useState, useContext, useEffect } from 'react';
+import { startRegistration } from '@simplewebauthn/browser'; // Importación vital
 
 const GlobalContext = createContext();
 export const useGlobalContext = () => useContext(GlobalContext);
@@ -6,108 +7,102 @@ export const useGlobalContext = () => useContext(GlobalContext);
 export const GlobalProvider = ({ children }) => {
   const [exchangeRate, setExchangeRate] = useState(40.50);
   const [capital, setCapital] = useState(5000);
-  
-  // Inventario modificado: Solo Bolsas y el Sticker Único
-  const [inventoryItems, setInventoryItems] = useState([
-    { id: 'b1', category: 'bags', name: 'Bolsa Clásica Transparente', quantity: 150, totalCostBs: 375 },
-    { id: 's1', category: 'stickers', name: 'Sticker Crunchy Club', quantity: 150, totalCostBs: 150 }
-  ]);
-  
-  // Productos terminados ahora es un Array para separar por tipos (Surtido, Salado, etc.)
-  const [finishedProducts, setFinishedProducts] = useState([
-    { id: 'fp1', name: 'Maní Salado', quantity: 20, priceEur: 1.5 },
-    { id: 'fp2', name: 'Maní Surtido', quantity: 15, priceEur: 2.0 }
-  ]);
+  const [inventoryItems, setInventoryItems] = useState([]);
+  const [finishedProducts, setFinishedProducts] = useState([]);
+  const [clients, setClients] = useState([]);
+  const [isBiometricLinked, setIsBiometricLinked] = useState(false); // Estado del botón temporal
 
-  const [clients, setClients] = useState([
-    { id: 1, name: 'María V.', packages: 2, totalOwedBs: 200, status: 'Debe' }
-  ]);
+  const API_URL = 'https://crunchy-backend-mtxo.onrender.com';
 
-  // Registrar una nueva venta (Descuenta producto terminado y crea cuenta por cobrar)
-  const registerNewSale = (clientName, productId, quantity) => {
-    const product = finishedProducts.find(p => p.id === productId);
-    
-    if (!product) return { success: false, message: "Producto no encontrado." };
-    if (product.quantity < parseInt(quantity)) {
-      return { 
-        success: false, 
-        message: `Stock insuficiente de ${product.name}. Solo quedan ${product.quantity} paquetes disponibles.` 
-      };
+  const refreshDataFromDatabase = async () => {
+    try {
+      const resInsumos = await fetch(`${API_URL}/insumos`);
+      setInventoryItems(await resInsumos.json());
+
+      const resProductos = await fetch(`${API_URL}/productos`);
+      setFinishedProducts(await resProductos.json());
+
+      const resClientes = await fetch(`${API_URL}/clientes`);
+      setClients(await resClientes.json());
+
+      // Consultar si la huella ya está registrada en PostgreSQL
+      const resCheck = await fetch(`${API_URL}/auth/check-biometric`);
+      const dataCheck = await resCheck.json();
+      setIsBiometricLinked(dataCheck.linked);
+    } catch (error) {
+      console.error("Error al sincronizar con el backend:", error);
     }
-
-    // 1. Descontar del inventario de productos terminados
-    setFinishedProducts(prev => prev.map(p => 
-      p.id === productId ? { ...p, quantity: p.quantity - parseInt(quantity) } : p
-    ));
-
-    // 2. Calcular los montos con la tasa actual
-    const totalEur = product.priceEur * parseInt(quantity);
-    const totalBs = totalEur * exchangeRate;
-
-    // 3. Crear el registro del cliente en la lista de "Debe"
-    setClients(prev => [
-      ...prev,
-      { 
-        id: Date.now(), 
-        name: clientName, 
-        packages: parseInt(quantity), 
-        totalOwedBs: totalBs, 
-        status: 'Debe' 
-      }
-    ]);
-
-    return { success: true };
   };
 
-  const payDebt = (clientId, exactPaidBs) => {
-    setClients(clients.map(c => c.id === clientId ? { ...c, status: 'Pagado' } : c));
-    setCapital(prev => prev + parseFloat(exactPaidBs));
+  useEffect(() => {
+    const fetchRealEuroRate = async () => {
+      try {
+        const response = await fetch('https://open.er-api.com/v6/latest/EUR');
+        const data = await response.json();
+        if (data?.rates?.VES) setExchangeRate(data.rates.VES);
+      } catch (error) {
+        console.warn("API de tasas caída, usando valor base.");
+      }
+    };
+    fetchRealEuroRate();
+    refreshDataFromDatabase();
+  }, []);
+
+  // Función para registrar la huella dactilar usando el hardware del dispositivo
+  const registerBiometric = async () => {
+    try {
+      // 1. Traer opciones de desafío criptográfico desde el Backend
+      const resOptions = await fetch(`${API_URL}/auth/register-options`);
+      const options = await resOptions.json();
+
+      // 2. Encender el sensor de huellas físico del dispositivo (Pixel 7, laptop, etc.)
+      const regResponse = await startRegistration(options);
+
+      // 3. Mandar la firma del sensor de vuelta al Backend para validar y guardar en la BD
+      const resVerify = await fetch(`${API_URL}/auth/register-verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(regResponse)
+      });
+
+      const verification = await resVerify.json();
+      
+      if (verification.verified) {
+        setIsBiometricLinked(true); // Oculta el botón de forma reactiva inmediatamente
+        alert("¡Huella dactilar vinculada y guardada en PostgreSQL de forma exitosa!");
+      } else {
+        alert("La verificación biométrica falló.");
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Para usar biometría local, asegúrate de estar en localhost o un entorno seguro con HTTPS.");
+    }
   };
 
-  // Comprar Insumos (Maneja la lógica del sticker único)
-  const buyMaterials = (category, title, quantity, costBs) => {
-    setCapital(prev => prev - parseFloat(costBs));
-    
-    // Si es sticker, forzamos el nombre para que siempre se agrupe en el mismo
-    const finalTitle = category === 'stickers' ? 'Sticker Crunchy Club' : title;
-    
-    setInventoryItems(prev => {
-      const existing = prev.find(item => item.name.toLowerCase() === finalTitle.toLowerCase() && item.category === category);
-      if (existing) {
-        return prev.map(item => item.id === existing.id ? {
-          ...item,
-          quantity: item.quantity + parseFloat(quantity),
-          totalCostBs: item.totalCostBs + parseFloat(costBs)
-        } : item);
-      }
-      return [...prev, { id: Date.now().toString(), category, name: finalTitle, quantity: parseFloat(quantity), totalCostBs: parseFloat(costBs) }];
-    });
+  // Métodos puente para componentes
+  const buyMaterials = async (category, title, quantity, costBs) => {
+    const res = await fetch(`${API_URL}/insumos`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ category, name: title, quantity, total_cost_bs: costBs }) });
+    if (res.ok) { setCapital(prev => prev - parseFloat(costBs)); refreshDataFromDatabase(); }
   };
 
-  // Nueva Lógica de Producción Just-in-Time
-  const producePackages = (productName, bagId, stickersQty, peanutCostBs, bagsAchieved, salePriceEur) => {
-    // 1. Descontar el costo del maní del capital (compra directa para producción)
-    setCapital(prev => prev - parseFloat(peanutCostBs));
+  const producePackages = async (productName, bagId, stickersQty, peanutCostBs, bagsAchieved, salePriceEur) => {
+    const res = await fetch(`${API_URL}/produccion`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ productName, bagId, stickersQty, bagsAchieved, salePriceEur }) });
+    if (res.ok) { setCapital(prev => prev - parseFloat(peanutCostBs)); refreshDataFromDatabase(); return { success: true }; }
+    return { success: false };
+  };
 
-    // 2. Descontar bolsas y stickers del stock
-    setInventoryItems(prev => prev.map(item => {
-      if (item.id === bagId) return { ...item, quantity: item.quantity - parseInt(bagsAchieved) };
-      if (item.category === 'stickers') return { ...item, quantity: item.quantity - parseInt(stickersQty) };
-      return item;
-    }));
+  const registerNewSale = async (clientName, productId, quantity) => {
+    const product = finishedProducts.find(p => p.id === parseInt(productId));
+    if (!product) return { success: false };
+    const totalBs = (product.price_eur * parseInt(quantity)) * exchangeRate;
+    const res = await fetch(`${API_URL}/ventas`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clientName, productId, quantity, totalOwedBs: totalBs }) });
+    if (res.ok) { refreshDataFromDatabase(); return { success: true }; }
+    return { success: false, message: "Error al registrar la venta" };
+  };
 
-    // 3. Registrar el producto terminado (crea uno nuevo o suma al existente)
-    setFinishedProducts(prev => {
-      const existing = prev.find(p => p.name.toLowerCase() === productName.toLowerCase());
-      if (existing) {
-        return prev.map(p => p.id === existing.id ? { 
-          ...p, 
-          quantity: p.quantity + parseInt(bagsAchieved),
-          priceEur: parseFloat(salePriceEur) // Actualiza al último precio de venta indicado
-        } : p);
-      }
-      return [...prev, { id: Date.now().toString(), name: productName, quantity: parseInt(bagsAchieved), priceEur: parseFloat(salePriceEur) }];
-    });
+  const payDebt = async (clientId, exactPaidBs) => {
+    const res = await fetch(`${API_URL}/clientes/${clientId}/pago`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ exactPaidBs }) });
+    if (res.ok) { setCapital(prev => prev + parseFloat(exactPaidBs)); refreshDataFromDatabase(); }
   };
 
   const checkLowStock = () => {
@@ -116,12 +111,13 @@ export const GlobalProvider = ({ children }) => {
     return totalBags < 20 || totalStickers < 20;
   };
 
-  const value = {
-    exchangeRate, capital, clients, payDebt, checkLowStock,
-    inventoryItems, finishedProducts, buyMaterials, producePackages,
-    receivables: clients.filter(c => c.status === 'Debe').reduce((acc, curr) => acc + curr.totalOwedBs, 0),
-    registerNewSale
-  };
-
-  return <GlobalContext.Provider value={value}>{children}</GlobalContext.Provider>;
+  return (
+    <GlobalContext.Provider value={{
+      exchangeRate, capital, clients, payDebt, checkLowStock,
+      inventoryItems, finishedProducts, buyMaterials, producePackages, registerNewSale, isBiometricLinked, registerBiometric,
+      receivables: clients.filter(c => c.status === 'Debe').reduce((acc, curr) => acc + parseFloat(curr.total_held_bs || curr.total_owed_bs || 0), 0),
+    }}>
+      {children}
+    </GlobalContext.Provider>
+  );
 };
