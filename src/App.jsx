@@ -57,7 +57,7 @@ const LoginScreen = ({ onLogin }) => {
         <div className="flex flex-col items-center mb-6">
           <img src={logoCrunchy} alt="Crunchy Club Logo" className="w-32 h-auto object-contain mb-2" />
           <p className="text-center text-gray-500 text-sm font-semibold tracking-wider uppercase">
-            Sistema de Gestión "Crunchy Club"
+            Sistema de Gestión
           </p>
         </div>
         
