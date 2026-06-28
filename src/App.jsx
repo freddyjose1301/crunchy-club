@@ -5,50 +5,71 @@ import { CurrencyDisplay } from './components/CurrencyDisplay';
 import { AlertBanner } from './components/AlertBanner';
 import { Fingerprint, Wallet, Package, TrendingUp, Users, LogOut } from 'lucide-react';
 import logoCrunchy from './assets/logo.png';
+import { startAuthentication } from '@simplewebauthn/browser';
 
 const LoginScreen = ({ onLogin }) => {
   const [password, setPassword] = useState('');
 
   const handlePasswordLogin = (e) => {
-    e.preventDefault(); // Evita que la página se recargue al presionar Enter
+    e.preventDefault();
     if (password === 'guacara') {
       onLogin();
     } else {
       alert('Contraseña incorrecta. Acceso denegado.');
-      setPassword(''); // Limpia el campo para que intentes de nuevo
+      setPassword('');
     }
   };
 
-  const handleBiometricPlaceholder = () => {
-    alert("La conexión real con el sensor de huellas estará disponible en la v2.0 (Requiere Base de Datos).");
+  // ESTA ES LA NUEVA FUNCIÓN CONECTADA AL SENSOR
+  const handleBiometricLogin = async () => {
+    try {
+      const API_URL = 'https://crunchy-backend-mtxo.onrender.com/api';
+      
+      // 1. Pedir permiso y desafío al servidor
+      const resOptions = await fetch(`${API_URL}/auth/login-options`);
+      if (!resOptions.ok) throw new Error("Aún no tienes una huella vinculada.");
+      const options = await resOptions.json();
+
+      // 2. Encender el sensor del teléfono
+      const authResp = await startAuthentication(options);
+
+      // 3. Enviar la huella escaneada para que el servidor la valide
+      const resVerify = await fetch(`${API_URL}/auth/login-verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(authResp)
+      });
+
+      const verification = await resVerify.json();
+      
+      if (verification.verified) {
+        onLogin(); // ¡Te deja entrar al sistema al instante!
+      } else {
+        alert("Huella no reconocida por el servidor.");
+      }
+    } catch (error) {
+      console.error(error);
+      alert(error.message);
+    }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-cream px-4">
       <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border-t-4 border-brandBlue">
-        {/* LOGO DE LA EMPRESA */}
         <div className="flex flex-col items-center mb-6">
-          <img 
-            src={logoCrunchy} 
-            alt="Crunchy Club Logo" 
-            className="w-32 h-auto object-contain mb-2"
-          />
+          <img src={logoCrunchy} alt="Crunchy Club Logo" className="w-32 h-auto object-contain mb-2" />
+          <p className="text-center text-gray-500 text-sm font-semibold tracking-wider uppercase">Sistema de Gestión</p>
         </div>
         
         <form onSubmit={handlePasswordLogin}>
           <input 
             type="password" 
-            placeholder="Contraseña" 
+            placeholder="Contraseña Maestra" 
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="w-full p-3 border border-gray-300 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-brandBlue text-center font-bold tracking-widest text-lg"
-            autoFocus
           />
-          
-          <button 
-            type="submit" 
-            className="w-full bg-brandBlue text-white font-bold py-3 rounded-lg hover:bg-brandBlueLight transition-colors mb-4 shadow-md"
-          >
+          <button type="submit" className="w-full bg-brandBlue text-white font-bold py-3 rounded-lg hover:bg-brandBlueLight transition-colors mb-4 shadow-md">
             Entrar al Sistema
           </button>
         </form>
@@ -58,9 +79,10 @@ const LoginScreen = ({ onLogin }) => {
           <span className="absolute bg-white px-3 text-sm text-gray-400">O ingresa con</span>
         </div>
         
+        {/* BOTÓN CONECTADO A LA FUNCIÓN REAL */}
         <button 
           type="button"
-          onClick={handleBiometricPlaceholder} 
+          onClick={handleBiometricLogin} 
           className="w-full border-2 border-brandBlue text-brandBlue font-bold py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-blue-50 transition-colors"
         >
           <Fingerprint size={20} /> Huella Dactilar
