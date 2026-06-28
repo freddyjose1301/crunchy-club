@@ -9,6 +9,7 @@ import { startAuthentication } from '@simplewebauthn/browser';
 
 const LoginScreen = ({ onLogin }) => {
   const [password, setPassword] = useState('');
+  const API_URL = 'https://crunchy-backend-mtxo.onrender.com/api'; // URL de tu backend
 
   const handlePasswordLogin = (e) => {
     e.preventDefault();
@@ -20,39 +21,35 @@ const LoginScreen = ({ onLogin }) => {
     }
   };
 
-  // ESTA ES LA NUEVA FUNCIÓN CONECTADA AL SENSOR
-const handleBiometricLogin = async () => {
+  const handleBiometricLogin = async () => {
     try {
-      const API_URL = 'https://crunchy-backend-mtxo.onrender.com/api';
-      
+      // 1. Pedir desafío de login al backend
       const resOptions = await fetch(`${API_URL}/auth/login-options`);
-      
-      // AHORA LEE EL ERROR REAL EN LUGAR DE LANZAR UN TEXTO QUEMADO
       if (!resOptions.ok) {
         const errorData = await resOptions.json();
-        throw new Error(errorData.error || "Falla al comunicarse con el servidor.");
+        throw new Error(errorData.error || "Falla de conexión.");
       }
-      
       const options = await resOptions.json();
-      const authResp = await startAuthentication(options);
 
+      // 2. Encender el lector físico para loguearse
+      const authResponse = await startAuthentication(options);
+
+      // 3. Verificar con el backend
       const resVerify = await fetch(`${API_URL}/auth/login-verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(authResp)
+        body: JSON.stringify(authResponse)
       });
 
       const verification = await resVerify.json();
-      
       if (verification.verified) {
-        onLogin();
+        onLogin(); // Te deja entrar directo al Dashboard
       } else {
-        alert(`Fallo: ${verification.error}`);
+        alert("Huella no reconocida.");
       }
     } catch (error) {
       console.error(error);
-      // ESTO NOS MOSTRARÁ LA VERDAD SI EL CÓDIGO FALLA
-      alert(`Alerta del sistema: ${error.message}`);
+      alert(error.message);
     }
   };
 
@@ -61,15 +58,14 @@ const handleBiometricLogin = async () => {
       <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border-t-4 border-brandBlue">
         <div className="flex flex-col items-center mb-6">
           <img src={logoCrunchy} alt="Crunchy Club Logo" className="w-32 h-auto object-contain mb-2" />
-          <p className="text-center text-gray-500 text-sm font-semibold tracking-wider uppercase">Sistema de Gestión</p>
+          <p className="text-center text-gray-500 text-sm font-semibold tracking-wider uppercase">
+            Sistema de Gestión
+          </p>
         </div>
         
         <form onSubmit={handlePasswordLogin}>
           <input 
-            type="password" 
-            placeholder="Contraseña Maestra" 
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            type="password" placeholder="Contraseña Maestra" value={password} onChange={(e) => setPassword(e.target.value)}
             className="w-full p-3 border border-gray-300 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-brandBlue text-center font-bold tracking-widest text-lg"
           />
           <button type="submit" className="w-full bg-brandBlue text-white font-bold py-3 rounded-lg hover:bg-brandBlueLight transition-colors mb-4 shadow-md">
@@ -82,10 +78,8 @@ const handleBiometricLogin = async () => {
           <span className="absolute bg-white px-3 text-sm text-gray-400">O ingresa con</span>
         </div>
         
-        {/* BOTÓN CONECTADO A LA FUNCIÓN REAL */}
         <button 
-          type="button"
-          onClick={handleBiometricLogin} 
+          type="button" onClick={handleBiometricLogin} 
           className="w-full border-2 border-brandBlue text-brandBlue font-bold py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-blue-50 transition-colors"
         >
           <Fingerprint size={20} /> Huella Dactilar
